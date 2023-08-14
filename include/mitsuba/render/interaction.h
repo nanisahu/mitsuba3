@@ -624,6 +624,12 @@ struct PreliminaryIntersection {
     /// Stores a pointer to the parent instance (if applicable)
     ShapePtr instance = nullptr;
 
+    /// Geometric normal of hit location (if applicable)
+    Vector3f geom_normal = Vector3f(0);
+
+    /// Whether provided geometric normal is valid
+    Mask normal_valid = false;
+
     //! @}
     // =============================================================
 

@@ -255,6 +255,9 @@ Scene<Float, Spectrum>::ray_intersect_preliminary_cpu(const Ray3f &ray,
             pi.t = rh.ray.tfar;
             pi.prim_index = prim_index;
             pi.prim_uv = Point2f(rh.hit.u, rh.hit.v);
+
+            pi.geom_normal = Vector3f(rh.hit.Ng_x, rh.hit.Ng_y, rh.hit.Ng_z);
+            pi.normal_valid = true;
         }
 
         return pi;
@@ -294,7 +297,7 @@ Scene<Float, Spectrum>::ray_intersect_preliminary_cpu(const Ray3f &ray,
                             ray_maxt.index(),  zero.index(),
                             zero.index(),      zero.index() };
 
-        uint32_t out[6] { };
+        uint32_t out[9] { };
 
         jit_llvm_ray_trace(func_v.index(), scene_v.index(), 0, in, out);
 
@@ -302,15 +305,20 @@ Scene<Float, Spectrum>::ray_intersect_preliminary_cpu(const Ray3f &ray,
 
         Float t(Single::steal(out[0]));
 
-        pi.prim_uv = Vector2f(Single::steal(out[1]),
-                              Single::steal(out[2]));
-
-        pi.prim_index  = UInt32::steal(out[3]);
-        pi.shape_index = UInt32::steal(out[4]);
-
-        UInt32 inst_index = UInt32::steal(out[5]);
-
         Mask hit = active && dr::neq(t, ray_maxt);
+
+        pi.geom_normal = Vector3f(Single::steal(out[1]),
+                                  Single::steal(out[2]),
+                                  Single::steal(out[3]));
+        pi.normal_valid = hit;
+
+        pi.prim_uv = Vector2f(Single::steal(out[4]),
+                              Single::steal(out[5]));
+
+        pi.prim_index  = UInt32::steal(out[6]);
+        pi.shape_index = UInt32::steal(out[7]);
+
+        UInt32 inst_index = UInt32::steal(out[8]);
 
         pi.t = dr::select(hit, t, dr::Infinity<Float>);
 

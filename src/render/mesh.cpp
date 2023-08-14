@@ -29,6 +29,8 @@ MI_VARIANT Mesh<Float, Spectrum>::Mesh(const Properties &props) : Base(props) {
 
     m_face_normals = props.get<bool>("face_normals", false);
     m_flip_normals = props.get<bool>("flip_normals", false);
+
+    m_use_prelim_geom_normals = props.get<bool>("use_prelim_geom_normals", true);
 }
 
 MI_VARIANT
@@ -754,7 +756,9 @@ Mesh<Float, Spectrum>::compute_surface_interaction(const Ray3f &ray,
     si.t = dr::select(active, t, dr::Infinity<Float>);
 
     // Face normal
-    si.n = dr::normalize(dr::cross(dp0, dp1));
+    si.n = dr::select(m_use_prelim_geom_normals && pi.normal_valid,
+                      pi.geom_normal,
+                      dr::normalize(dr::cross(dp0, dp1)));
 
     // Texture coordinates (if available)
     si.uv = Point2f(b1, b2);

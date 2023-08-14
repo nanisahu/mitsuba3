@@ -470,6 +470,10 @@ protected:
     bool m_face_normals = false;
     bool m_flip_normals = false;
 
+    /// Flag that can be set by the user to rely on geometric normals computed
+    /// by third-party external ray-tracing kernels (e.g. Embree)
+    bool m_use_prelim_geom_normals = false;
+
     /* Surface area distribution -- generated on demand when \ref
        prepare_area_pmf() is first called. */
     DiscreteDistribution<Float> m_area_pmf;
