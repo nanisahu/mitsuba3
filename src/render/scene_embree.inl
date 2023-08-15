@@ -256,7 +256,7 @@ Scene<Float, Spectrum>::ray_intersect_preliminary_cpu(const Ray3f &ray,
             pi.prim_index = prim_index;
             pi.prim_uv = Point2f(rh.hit.u, rh.hit.v);
 
-            pi.geom_normal = Vector3f(rh.hit.Ng_x, rh.hit.Ng_y, rh.hit.Ng_z);
+            pi.geom_normal = dr::normalize(Vector3f(rh.hit.Ng_x, rh.hit.Ng_y, rh.hit.Ng_z));
             pi.normal_valid = true;
         }
 
@@ -307,9 +307,10 @@ Scene<Float, Spectrum>::ray_intersect_preliminary_cpu(const Ray3f &ray,
 
         Mask hit = active && dr::neq(t, ray_maxt);
 
-        pi.geom_normal = Vector3f(Single::steal(out[1]),
-                                  Single::steal(out[2]),
-                                  Single::steal(out[3]));
+        pi.geom_normal = dr::normalize(Vector3f(Single::steal(out[1]),
+                                                Single::steal(out[2]),
+                                                Single::steal(out[3])));
+
         pi.normal_valid = hit;
 
         pi.prim_uv = Vector2f(Single::steal(out[4]),

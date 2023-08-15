@@ -625,7 +625,7 @@ struct PreliminaryIntersection {
     ShapePtr instance = nullptr;
 
     /// Geometric normal of hit location (if applicable)
-    Vector3f geom_normal = Vector3f(0);
+    Vector3f geom_normal;
 
     /// Whether provided geometric normal is valid
     Mask normal_valid = false;
@@ -693,7 +693,7 @@ struct PreliminaryIntersection {
     // =============================================================
 
     DRJIT_STRUCT(PreliminaryIntersection, t, prim_uv, prim_index, shape_index,
-                 shape, instance);
+                 shape, instance, geom_normal, normal_valid);
 };
 
 // -----------------------------------------------------------------------------
