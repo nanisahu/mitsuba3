@@ -1051,3 +1051,51 @@ def test26_flip_tex_coords_ply(variants_all_rgb, tmp_path):
 
     assert (uv[::2] == uv_flipped[::2]).all()
     assert (uv[1::2] == 1 - uv_flipped[1::2]).all()
+
+
+@fresolver_append_path
+def test27_embree_normals(variant_llvm_ad_rgb):
+    aov_integrator = mi.load_dict({
+        'type': 'aov',
+        'aovs': 'nn:geo_normal'
+    })
+
+    mesh = {
+        'type' : 'obj',
+        'filename' : 'resources/data/common/meshes/sphere.obj',
+        'face_normals': False
+    }
+
+    to_world = mi.ScalarTransform4f.look_at(origin=[3, 3, 3],
+                                            target=[0, 0, 0],
+                                            up=[0, 0, 1])
+
+    scene_dict = {
+        'type': 'scene',
+        'mesh' : mesh,
+        'sensor': {'type': 'perspective',
+        'fov_axis': 'smaller',
+        'near_clip': 0.001,
+        'far_clip': 100.0,
+        'focus_distance': 1000,
+        'fov': 39.3077,
+        'to_world': to_world,
+        'sampler': {'type': 'independent', 'sample_count': 16},
+        'film': {'type': 'hdrfilm',
+        'width': 256,
+        'height': 256,
+        'rfilter': {'type': 'gaussian'},
+        'pixel_format': 'rgb',
+        'component_format': 'float32'}}
+    }
+
+    # Geom normals precomputed by Embree
+    scene = mi.load_dict(scene_dict)
+    embree_normal_map = aov_integrator.render(scene, seed=0, spp=16)
+    
+    # Geom normals manually computed
+    mesh['use_prelim_geom_normals'] = False
+    scene = mi.load_dict(scene_dict)
+    manual_normal_map = aov_integrator.render(scene, seed=0, spp=16)
+
+    assert dr.allclose(embree_normal_map, manual_normal_map)
