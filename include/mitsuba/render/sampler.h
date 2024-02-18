@@ -127,6 +127,9 @@ public:
     /// dr::schedule() variables that represent the internal sampler state
     virtual void schedule_state();
 
+    virtual void traverse_1_cb_ro(void *payload, void (*fn)(void *, uint64_t)) const = 0;
+    virtual void traverse_1_cb_rw(void *payload, uint64_t (*fn)(void *, uint64_t)) = 0;
+
     MI_DECLARE_CLASS()
 protected:
     Sampler(const Properties &props);
@@ -165,6 +168,9 @@ public:
     virtual void seed(uint32_t seed,
                       uint32_t wavefront_size = (uint32_t) -1) override;
     virtual void schedule_state() override;
+
+    virtual void traverse_1_cb_ro(void *payload, void (*fn)(void *, uint64_t)) const override;
+    virtual void traverse_1_cb_rw(void *payload, uint64_t (*fn)(void *, uint64_t)) override;
 
     MI_DECLARE_CLASS()
 protected:

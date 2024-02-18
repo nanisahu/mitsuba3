@@ -67,7 +67,9 @@ Bitmap texture (:monosp:`bitmap`)
 
      - ``auto`` (default): If loading a texture from a bitmap, use half 
          precision for bitmap data with 16 or lower bit depth, otherwise use 
-         the native floating point representation of the Mitsuba variant
+         the native floating point representation of the Mitsuba variant. For
+         variants using a spectral color representation this option is the same 
+         as `variant`.
 
      - ``variant``: Use the corresponding native floating point representation 
          of the Mitsuba variant
@@ -228,8 +230,10 @@ protected:
         if (m_bitmap) {
 
             Format format = m_format;
-            // Format auto means we store texture as FP16 when possible
-            {
+            // Format auto means we store texture as FP16 when possible.
+            // Skip this conversion for spectral variants as we want to perform 
+            // spectral upsampling in the variant's native FP representation
+            if constexpr (!is_spectral_v<Spectrum>) {
                 size_t bytes_p_ch = m_bitmap->bytes_per_pixel() 
                     / m_bitmap->channel_count();
                 if (m_format == Format::Auto && bytes_p_ch <= 2)
