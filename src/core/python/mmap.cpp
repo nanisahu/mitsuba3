@@ -16,7 +16,6 @@ MI_PY_EXPORT(MemoryMappedFile) {
             size_t size = array.size() * array.itemsize();
             auto m = new (t) MemoryMappedFile(p, size);
             memcpy(m->data(), array.data(), size);
-            return m;
         }, "filename"_a, "array"_a)
         .def("size", &MemoryMappedFile::size, D(MemoryMappedFile, size))
         .def("data", nb::overload_cast<>(&MemoryMappedFile::data), D(MemoryMappedFile, data))
@@ -25,7 +24,6 @@ MI_PY_EXPORT(MemoryMappedFile) {
         .def("can_write", &MemoryMappedFile::can_write, D(MemoryMappedFile, can_write))
         .def_static("create_temporary", &MemoryMappedFile::create_temporary, D(MemoryMappedFile, create_temporary))
         .def("__array__", [](MemoryMappedFile &m) {
-            size_t shape[] = { m.size() };
-            return nb::ndarray<nb::numpy, uint8_t>((uint8_t*)m.data(), 1, shape);
+            return nb::ndarray<nb::numpy, uint8_t>((uint8_t*)m.data(), { m.size() }, nb::handle());
         }, nb::rv_policy::reference_internal);
 }

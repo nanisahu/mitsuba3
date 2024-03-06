@@ -4,6 +4,7 @@
 #include <mitsuba/python/python.h>
 #include <nanobind/trampoline.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
 #include <nanobind/ndarray.h>
 
 MI_PY_EXPORT(VolumeGrid) {
@@ -61,7 +62,7 @@ MI_PY_EXPORT(VolumeGrid) {
             }
 
             init_cpu_ndarray(t,
-                CpuNdArray(cpu_array.data(), obj.ndim(), &obj.shape()[0]),
+                CpuNdArray(cpu_array.data(), obj.ndim(), &obj.shape()[0], nb::handle()),
                 compute_max);
          }, "array"_a, "compute_max"_a = true, "Initialize a VolumeGrid from a drjit tensor")
         .def_method(VolumeGrid, size)

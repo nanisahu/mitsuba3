@@ -34,13 +34,13 @@ MI_PY_DECLARE(misc);
 MI_PY_DECLARE(BSDFContext);
 MI_PY_DECLARE(EmitterExtras);
 MI_PY_DECLARE(RayFlags);
-//MI_PY_DECLARE(MicrofacetType);
+MI_PY_DECLARE(MicrofacetType);
 MI_PY_DECLARE(PhaseFunctionExtras);
 MI_PY_DECLARE(Spiral);
 MI_PY_DECLARE(Sensor);
 MI_PY_DECLARE(VolumeGrid);
 MI_PY_DECLARE(FilmFlags);
-//MI_PY_DECLARE(DiscontinuityFlags);
+MI_PY_DECLARE(DiscontinuityFlags);
 
 NB_MODULE(mitsuba_ext, m) {
     // Temporarily change the module name (for pydoc)
@@ -151,12 +151,12 @@ NB_MODULE(mitsuba_ext, m) {
     MI_PY_IMPORT(BSDFContext);
     MI_PY_IMPORT(EmitterExtras);
     MI_PY_IMPORT(RayFlags);
-//    MI_PY_IMPORT(MicrofacetType);
+    MI_PY_IMPORT(MicrofacetType);
     MI_PY_IMPORT(PhaseFunctionExtras);
     MI_PY_IMPORT(Spiral);
     MI_PY_IMPORT(Sensor);
     MI_PY_IMPORT(FilmFlags);
-//    MI_PY_IMPORT(DiscontinuityFlags);
+    MI_PY_IMPORT(DiscontinuityFlags);
 
     /* Register a cleanup callback function to wait for pending tasks (this is
      * called before all Python variables are cleaned up */
@@ -164,6 +164,7 @@ NB_MODULE(mitsuba_ext, m) {
     atexit.attr("register")(nb::cpp_function([]() {
         Thread::wait_for_tasks();
         Class::static_remove_functors();
+        Struct::static_shutdown();
         Logger::static_shutdown();
         Thread::static_shutdown();
     }));
