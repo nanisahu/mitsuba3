@@ -94,7 +94,7 @@ extern MI_EXPORT_LIB std::vector<ref<Object>> expand_node(
 
 /// Read a Mitsuba XML file and return a list of pairs containing the
 /// name of the plugin and the corresponding populated Properties object
-extern MI_EXPORT_LIB std::vector<std::pair<std::string, Properties>> xml_to_properties(
+extern MI_EXPORT_LIB std::vector<std::pair<std::string, std::unique_ptr<Properties>>> xml_to_properties(
                                         const fs::path &path,
                                         const std::string &variant);
 

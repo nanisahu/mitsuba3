@@ -180,8 +180,9 @@ struct XMLSource {
     }
 };
 
+template <typename Float_>
 struct XMLObject {
-    Properties props;
+    PropertiesV<Float_> props;
     const Class *class_ = nullptr;
     std::string src_id;
     std::string alias;
@@ -210,11 +211,12 @@ ColorMode variant_to_color_mode() {
         static_assert(false_v<Float, Spectrum>, "This should never happen!");
 }
 
+template <typename Float_>
 struct XMLParseContext {
     std::string variant;
     bool parallel;
 
-    std::unordered_map<std::string, XMLObject> instances;
+    std::unordered_map<std::string, XMLObject<Float_>> instances;
     Transform4f transform;
     ColorMode color_mode;
     uint32_t id_counter = 0;
@@ -392,7 +394,8 @@ void upgrade_tree(XMLSource &src, pugi::xml_node &node, const Version &version) 
             Version(MI_VERSION));
 }
 
-static std::pair<std::string, std::string> parse_xml(XMLSource &src, XMLParseContext &ctx,
+template <typename Float_>
+static std::pair<std::string, std::string> parse_xml(XMLSource &src, XMLParseContext<Float_> &ctx,
                                                      pugi::xml_node &node, Tag parent_tag,
                                                      Properties &props, ParameterList &param,
                                                      size_t &arg_counter, int depth,
@@ -949,7 +952,8 @@ static std::pair<std::string, std::string> parse_xml(XMLSource &src, XMLParseCon
     return std::make_pair("", "");
 }
 
-static std::string init_xml_parse_context_from_file(XMLParseContext &ctx,
+template <typename Float_>
+static std::string init_xml_parse_context_from_file(XMLParseContext<Float_> &ctx,
                                                     const fs::path &filename_,
                                                     ParameterList param,
                                                     bool write_update) {
@@ -1007,7 +1011,8 @@ static std::string init_xml_parse_context_from_file(XMLParseContext &ctx,
     return scene_id;
 }
 
-static Task *instantiate_node(XMLParseContext &ctx,
+template <typename Float_>
+static Task *instantiate_node(XMLParseContext<Float_> &ctx,
                               const std::string &id,
                               ThreadEnvironment &env,
                               std::unordered_map<std::string, Task *> &task_map,
@@ -1019,12 +1024,12 @@ static Task *instantiate_node(XMLParseContext &ctx,
     if (it == ctx.instances.end())
         Throw("reference to unknown object \"%s\"!", id);
 
-    XMLObject &inst = it->second;
+    XMLObject<Float_> &inst = it->second;
 
     if (!inst.alias.empty())
         return instantiate_node(ctx, inst.alias, env, task_map, top_node);
 
-    Properties &props = inst.props;
+    PropertiesV<Float_> &props = inst.props;
     const auto &named_references = props.named_references();
     uint32_t scope = inst.scope;
 
@@ -1133,7 +1138,8 @@ static Task *instantiate_node(XMLParseContext &ctx,
     }
 }
 
-static ref<Object> instantiate_top_node(XMLParseContext &ctx, const std::string &id) {
+template <typename Float_>
+static ref<Object> instantiate_top_node(XMLParseContext<Float_> &ctx, const std::string &id) {
     ThreadEnvironment env;
     std::unordered_map<std::string, Task*> task_map;
     instantiate_node(ctx, id, env, task_map, true);
@@ -1274,8 +1280,9 @@ std::vector<ref<Object>> expand_node(const ref<Object> &node) {
     return { node };
 }
 
-std::vector<std::pair<std::string, Properties>> xml_to_properties(const fs::path &filename,
-                                                                  const std::string &variant) {
+template <typename Float_, typename Spectrum>
+std::vector<std::pair<std::string, std::unique_ptr<Properties>>>
+variant_xml_to_properties(const fs::path &filename, const std::string &variant) {
     if (!fs::exists(filename))
         Throw("\"%s\": file does not exist!", filename);
 
@@ -1292,7 +1299,7 @@ std::vector<std::pair<std::string, Properties>> xml_to_properties(const fs::path
 
     try {
         ParameterList param;
-        detail::XMLParseContext ctx(variant, false);
+        detail::XMLParseContext<Float_> ctx(variant, false);
         (void) detail::init_xml_parse_context_from_file(ctx, filename, param, false);
 
         Thread::thread()->set_file_resolver(fs_backup.get());
@@ -1302,13 +1309,14 @@ std::vector<std::pair<std::string, Properties>> xml_to_properties(const fs::path
 
         // Copy all properties inside of a vector. The object hierarchy is handled
         // using named reference properties.
-        std::vector<std::pair<std::string, Properties>> props;
+        std::vector<std::pair<std::string, std::unique_ptr<Properties>>> props;
         for (auto &[id, object] : ctx.instances) {
             if (!object.class_) {
                 Log(Warn, "Cannot find class for property with id \"%s\".", id);
                 continue;
             }
-            props.emplace_back(object.class_->name(), std::move(object.props));
+            props.emplace_back(object.class_->name(), 
+                std::make_unique<PropertiesV<Float_>>(std::move(object.props)));
         }
 
         return props;
@@ -1318,9 +1326,54 @@ std::vector<std::pair<std::string, Properties>> xml_to_properties(const fs::path
     }
 }
 
-NAMESPACE_END(detail)
+std::vector<std::pair<std::string, std::unique_ptr<Properties>>>
+xml_to_properties(const fs::path &filename, const std::string &variant) {
+    return MI_INVOKE_VARIANT(variant, variant_xml_to_properties, filename, variant);
+}
 
-std::vector<ref<Object>> load_string(const std::string &string,
+template <typename Float_, typename Spectrum>
+std::vector<ref<Object>> variant_load_file(const fs::path &filename,
+                                   const std::string &variant,
+                                   ParameterList param,
+                                   bool write_update,
+                                   bool parallel) {
+    ScopedPhase sp(ProfilerPhase::InitScene);
+
+    if (!fs::exists(filename))
+        Throw("\"%s\": file does not exist!", filename);
+
+    Timer timer;
+    Log(Info, "Loading XML file \"%s\" with variant \"%s\"..", filename, variant);
+
+    // Make a backup copy of the FileResolver, which will be restored after parsing
+    ref<FileResolver> fs_backup = Thread::thread()->file_resolver();
+    ref<FileResolver> fs = new FileResolver(*fs_backup);
+    fs->append(filename.parent_path());
+    Thread::thread()->set_file_resolver(fs.get());
+
+    try {
+        detail::XMLParseContext<Float_> ctx(variant, parallel);
+        auto scene_id = detail::init_xml_parse_context_from_file(ctx, filename, param, write_update);
+
+        ref<Object> top_node = detail::instantiate_top_node(ctx, scene_id);
+        std::vector<ref<Object>> objects = detail::expand_node(top_node);
+
+        Thread::thread()->set_file_resolver(fs_backup.get());
+
+        Log(Info, "Done loading XML file \"%s\" (took %s).",
+            filename, util::time_string((float) timer.value(), true));
+
+        return objects;
+    } catch (...) {
+        Thread::thread()->set_file_resolver(fs_backup.get());
+        throw;
+    }
+
+    return {};
+}
+
+template <typename Float_, typename Spectrum>
+std::vector<ref<Object>> variant_load_string(const std::string &string,
                                      const std::string &variant,
                                      ParameterList param,
                                      bool parallel) {
@@ -1344,7 +1397,7 @@ std::vector<ref<Object>> load_string(const std::string &string,
 
     try {
         pugi::xml_node root = doc.document_element();
-        detail::XMLParseContext ctx(variant, parallel);
+        detail::XMLParseContext<Float_> ctx(variant, parallel);
         Properties props;
         size_t arg_counter = 0; // Unused
         auto scene_id = detail::parse_xml(src, ctx, root, Tag::Invalid, props,
@@ -1366,42 +1419,23 @@ std::vector<ref<Object>> load_string(const std::string &string,
     }
 }
 
+NAMESPACE_END(detail)
+
+std::vector<ref<Object>> load_string(const std::string &string,
+                                     const std::string &variant,
+                                     ParameterList param,
+                                     bool parallel) {
+    return MI_INVOKE_VARIANT(variant, detail::variant_load_string, string, \
+        variant, param, parallel);
+}
+
 std::vector<ref<Object>> load_file(const fs::path &filename,
                                    const std::string &variant,
                                    ParameterList param,
                                    bool write_update,
                                    bool parallel) {
-    ScopedPhase sp(ProfilerPhase::InitScene);
-
-    if (!fs::exists(filename))
-        Throw("\"%s\": file does not exist!", filename);
-
-    Timer timer;
-    Log(Info, "Loading XML file \"%s\" with variant \"%s\"..", filename, variant);
-
-    // Make a backup copy of the FileResolver, which will be restored after parsing
-    ref<FileResolver> fs_backup = Thread::thread()->file_resolver();
-    ref<FileResolver> fs = new FileResolver(*fs_backup);
-    fs->append(filename.parent_path());
-    Thread::thread()->set_file_resolver(fs.get());
-
-    try {
-        detail::XMLParseContext ctx(variant, parallel);
-        auto scene_id = detail::init_xml_parse_context_from_file(ctx, filename, param, write_update);
-
-        ref<Object> top_node = detail::instantiate_top_node(ctx, scene_id);
-        std::vector<ref<Object>> objects = detail::expand_node(top_node);
-
-        Thread::thread()->set_file_resolver(fs_backup.get());
-
-        Log(Info, "Done loading XML file \"%s\" (took %s).",
-            filename, util::time_string((float) timer.value(), true));
-
-        return objects;
-    } catch (...) {
-        Thread::thread()->set_file_resolver(fs_backup.get());
-        throw;
-    }
+    return MI_INVOKE_VARIANT(variant, detail::variant_load_file, filename, \
+        variant, param, write_update, parallel);
 }
 
 NAMESPACE_END(xml)

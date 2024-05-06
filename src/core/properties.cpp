@@ -223,6 +223,9 @@ Properties::Properties(const std::string &plugin_name)
 Properties::Properties(const Properties &props)
     : d(new PropertiesPrivate(*props.d)) { }
 
+Properties::Properties(Properties &&props)
+    : d(std::move(props.d)) { }
+
 Properties::~Properties() { }
 
 void Properties::operator=(const Properties &props) {

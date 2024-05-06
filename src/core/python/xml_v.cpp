@@ -14,20 +14,23 @@
 #include <nanobind/stl/pair.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/unique_ptr.h>
 
 using Caster = nb::object(*)(mitsuba::Object *);
 extern Caster cast_object;
 
+template <typename Float>
 struct DictInstance {
-    Properties props;
+    PropertiesV<Float> props;
     ref<Object> object = nullptr;
     uint32_t scope;
     std::vector<std::pair<std::string, std::string>> dependencies;
 };
 
+template <typename Float>
 struct DictParseContext {
     ThreadEnvironment env;
-    std::map<std::string, DictInstance> instances;
+    std::map<std::string, DictInstance<Float>> instances;
     std::map<std::string, std::string> aliases;
     bool parallel;
 };
@@ -35,13 +38,13 @@ struct DictParseContext {
 // Forward declaration
 template <typename Float, typename Spectrum>
 void parse_dictionary(
-    DictParseContext &ctx,
+    DictParseContext<Float> &ctx,
     const std::string path,
     const nb::dict &dict
 );
 template <typename Float, typename Spectrum>
 Task * instantiate_node(
-    DictParseContext &ctx,
+    DictParseContext<Float> &ctx,
     const std::string path,
     std::unordered_map<std::string, Task *> &task_map
 );
@@ -120,7 +123,7 @@ MI_PY_EXPORT(xml) {
             ref<FileResolver> fs_backup = Thread::thread()->file_resolver();
             Thread::thread()->set_file_resolver(new FileResolver(*fs_backup));
 
-            DictParseContext ctx;
+            DictParseContext<Float> ctx;
             ctx.parallel = parallel;
             ctx.env = ThreadEnvironment();
 
@@ -255,7 +258,7 @@ ref<Object> create_texture_from(const nb::dict &dict, bool within_emitter) {
 }
 
 template <typename Float, typename Spectrum>
-void parse_dictionary(DictParseContext &ctx,
+void parse_dictionary(DictParseContext<Float> &ctx,
                       const std::string path,
                       const nb::dict &dict) {
     MI_IMPORT_CORE_TYPES()
@@ -387,7 +390,7 @@ void parse_dictionary(DictParseContext &ctx,
 
         // Try to cast to TensorXf
         try {
-            TensorXf tensor = nb::cast<TensorXf>(value);
+            TensorXf tensor = nb::cast<TensorXf>(nb::type<TensorXf>()(value));
             // To support parallel loading we have to ensure tensor has been evaluated
             // because tracking of side effects won't persist across different ThreadStates
             dr::eval(tensor);
@@ -417,7 +420,7 @@ void parse_dictionary(DictParseContext &ctx,
 }
 
 template <typename Float, typename Spectrum>
-Task *instantiate_node(DictParseContext &ctx,
+Task *instantiate_node(DictParseContext<Float> &ctx,
                        std::string path,
                        std::unordered_map<std::string, Task *> &task_map) {
     if (task_map.find(path) != task_map.end())
@@ -446,7 +449,7 @@ Task *instantiate_node(DictParseContext &ctx,
         mitsuba::xml::ScopedSetJITScope set_scope(ctx.parallel ? backend : 0u, scope);
 
         auto &inst = ctx.instances[path];
-        Properties props = inst.props;
+        PropertiesV<Float> props = inst.props;
         std::string type = props.plugin_name();
 
         const Class *class_;

@@ -53,7 +53,7 @@ public:
 
     PyMesh(const Properties &props) : Mesh(props) { }
     PyMesh(const std::string &name, uint32_t vertex_count, uint32_t face_count,
-           const Properties &props = Properties(),
+           const Properties &props = PropertiesV<Float>(),
            bool has_vertex_normals = false, bool has_vertex_texcoords = false)
         : Mesh(name, vertex_count, face_count, props, has_vertex_normals,
                has_vertex_texcoords) {}
@@ -249,7 +249,7 @@ MI_PY_EXPORT(Shape) {
         .def(nb::init<const std::string &, ScalarSize, ScalarSize,
                       const Properties &, bool, bool>(),
              "name"_a, "vertex_count"_a, "face_count"_a,
-             "props"_a = Properties(),
+             "props"_a = PropertiesV<Float>(),
              "has_vertex_normals"_a = false, "has_vertex_texcoords"_a = false,
              D(Mesh, Mesh))
         .def_method(Mesh, initialize)
