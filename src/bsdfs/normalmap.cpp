@@ -117,9 +117,7 @@ public:
                                              const Point2f &sample2,
                                              Mask active) const override {
         // Sample nested BSDF with perturbed shading frame
-        SurfaceInteraction3f perturbed_si(si);
-        perturbed_si.sh_frame = frame(si, active);
-        perturbed_si.wi = perturbed_si.to_local(si.wi);
+        SurfaceInteraction3f perturbed_si = perturb(si, active);
         auto [bs, weight] = m_nested_bsdf->sample(ctx, perturbed_si,
                                                   sample1, sample2, active);
         active &= dr::any(unpolarized_spectrum(weight) != 0.f);
@@ -127,10 +125,10 @@ public:
             return { bs, 0.f };
 
         // Transform sampled 'wo' back to original frame and check orientation
-        Vector3f perturbed_wo = perturbed_si.to_world(bs.wo);
+        Vector3f wo = si.to_local(perturbed_si.to_world(bs.wo));
         active &= Frame3f::cos_theta(bs.wo) *
-                  Frame3f::cos_theta(perturbed_wo) > 0.f;
-        bs.wo = perturbed_wo;
+                  Frame3f::cos_theta(wo) > 0.f;
+        bs.wo = wo;
 
         return { bs, weight & active };
     }
@@ -139,10 +137,8 @@ public:
     Spectrum eval(const BSDFContext &ctx, const SurfaceInteraction3f &si,
                   const Vector3f &wo, Mask active) const override {
         // Evaluate nested BSDF with perturbed shading frame
-        SurfaceInteraction3f perturbed_si(si);
-        perturbed_si.sh_frame = frame(si, active);
-        perturbed_si.wi       = perturbed_si.to_local(si.wi);
-        Vector3f perturbed_wo = perturbed_si.to_local(wo);
+        SurfaceInteraction3f perturbed_si = perturb(si, active);
+        Vector3f perturbed_wo = perturbed_si.to_local(si.to_world(wo));
 
         active &= Frame3f::cos_theta(wo) *
                   Frame3f::cos_theta(perturbed_wo) > 0.f;
@@ -154,10 +150,8 @@ public:
     Float pdf(const BSDFContext &ctx, const SurfaceInteraction3f &si,
               const Vector3f &wo, Mask active) const override {
         // Evaluate nested BSDF with perturbed shading frame
-        SurfaceInteraction3f perturbed_si(si);
-        perturbed_si.sh_frame = frame(si, active);
-        perturbed_si.wi       = perturbed_si.to_local(si.wi);
-        Vector3f perturbed_wo = perturbed_si.to_local(wo);
+        SurfaceInteraction3f perturbed_si = perturb(si, active);
+        Vector3f perturbed_wo = perturbed_si.to_local(si.to_world(wo));
 
         active &= Frame3f::cos_theta(wo) *
                   Frame3f::cos_theta(perturbed_wo) > 0.f;
@@ -172,10 +166,8 @@ public:
         MI_MASKED_FUNCTION(ProfilerPhase::BSDFEvaluate, active);
 
         // Evaluate nested BSDF with perturbed shading frame
-        SurfaceInteraction3f perturbed_si(si);
-        perturbed_si.sh_frame = frame(si, active);
-        perturbed_si.wi       = perturbed_si.to_local(si.wi);
-        Vector3f perturbed_wo = perturbed_si.to_local(wo);
+        SurfaceInteraction3f perturbed_si = perturb(si, active);
+        Vector3f perturbed_wo = perturbed_si.to_local(si.to_world(wo));
 
         active &= Frame3f::cos_theta(wo) *
                   Frame3f::cos_theta(perturbed_wo) > 0.f;
@@ -184,14 +176,19 @@ public:
         return { value & active, dr::select(active, pdf, 0.f) };
     }
 
-    Frame3f frame(const SurfaceInteraction3f &si, Mask active) const {
+    SurfaceInteraction3f perturb(const SurfaceInteraction3f &si, Mask active) const {
         Normal3f n = dr::fmadd(m_normalmap->eval_3(si, active), 2, -1.f);
 
-        Frame3f result;
-        result.n = dr::normalize(n);
-        result.s = dr::normalize(dr::fnmadd(result.n, dr::dot(result.n, si.dp_du), si.dp_du));
-        result.t = dr::cross(result.n, result.s);
-        return result;
+        Frame3f perturbed_frame;
+        perturbed_frame.n = dr::normalize(si.to_world(n));
+        perturbed_frame.s = dr::normalize(si.to_world(dr::fnmadd(n, n.x(), ScalarVector3f(1, 0, 0))));
+        perturbed_frame.t = dr::cross(perturbed_frame.n, perturbed_frame.s);
+
+        SurfaceInteraction3f perturbed_si(si);
+        perturbed_si.sh_frame = perturbed_frame;
+        perturbed_si.wi = perturbed_frame.to_local(si.to_world(si.wi));
+
+        return perturbed_si;
     }
 
     Spectrum eval_diffuse_reflectance(const SurfaceInteraction3f &si,
