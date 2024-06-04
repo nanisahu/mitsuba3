@@ -40,6 +40,8 @@ def test03_eval_3(variants_vec_backends_once_rgb, tmpdir):
     grid = dr.full(mi.TensorXf, 0.9, [3, 3, 3, 3])
     grid[..., 1] = 0.4
     grid[..., 2] = 0.2
+    # Write-after-write scatter dependency. Need to explicity split kernel
+    dr.eval(grid)
     grid[:, 0, :, :] = 0.0
 
     mi.VolumeGrid(grid).write(tmp_file)
