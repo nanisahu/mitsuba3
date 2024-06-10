@@ -181,7 +181,8 @@ template <typename Float_> struct CoreAliases {
     using Color1d = Color<Float64, 1>;
     using Color3d = Color<Float64, 3>;
 
-    using TensorXf = dr::Tensor<mitsuba::DynamicBuffer<Float>>;
+    using TensorXf   = dr::Tensor<mitsuba::DynamicBuffer<Float>>;
+    using TensorXf16 = dr::Tensor<mitsuba::DynamicBuffer<Float16>>;
 
     using Texture1f = dr::Texture<Float, 1>;
     using Texture2f = dr::Texture<Float, 2>;
@@ -277,6 +278,7 @@ template <typename Float_> struct CoreAliases {
     using prefix ## Color1d              = typename prefix ## CoreAliases::Color1d;                \
     using prefix ## Color3d              = typename prefix ## CoreAliases::Color3d;                \
     using prefix ## TensorXf             = typename prefix ## CoreAliases::TensorXf;               \
+    using prefix ## TensorXf16           = typename prefix ## CoreAliases::TensorXf16;             \
     using prefix ## Texture1f16          = typename prefix ## CoreAliases::Texture1f16;            \
     using prefix ## Texture2f16          = typename prefix ## CoreAliases::Texture2f16;            \
     using prefix ## Texture3f16          = typename prefix ## CoreAliases::Texture3f16;            \
