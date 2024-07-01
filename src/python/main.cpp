@@ -44,10 +44,10 @@ MI_PY_DECLARE(DiscontinuityFlags);
 
 NB_MODULE(mitsuba_ext, m) {
     // Temporarily change the module name (for pydoc)
-    m.attr("__name__") = "mitsuba";
+    m.attr("__name__") = "mitsuba_ext";
 
     // Expose some constants in the main `mitsuba` module
-    m.attr("__version__")       = MI_VERSION;
+    m.attr("__version__")      = MI_VERSION;
     m.attr("MI_VERSION")       = MI_VERSION;
     m.attr("MI_VERSION_MAJOR") = MI_VERSION_MAJOR;
     m.attr("MI_VERSION_MINOR") = MI_VERSION_MINOR;

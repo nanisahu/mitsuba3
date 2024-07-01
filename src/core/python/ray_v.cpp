@@ -5,20 +5,22 @@
 template<typename Ray>
 void bind_ray(nb::module_ &m, const char *name) {
     MI_PY_IMPORT_TYPES()
-    using Vector = typename Ray::Vector;
-    using Point  = typename Ray::Point;
+    using Value       = typename Ray::Float;
+    using Vector      = typename Ray::Vector;
+    using Point       = typename Ray::Point;
+    using RWavelength = typename Ray::Wavelength;
 
     MI_PY_CHECK_ALIAS(Ray, name) {
         auto ray = nb::class_<Ray>(m, name, D(Ray))
             .def(nb::init<>(), "Create an uninitialized ray")
             .def(nb::init<const Ray &>(), "Copy constructor", "other"_a)
-            .def(nb::init<Point, Vector, Float, const Wavelength &>(),
+            .def(nb::init<Point, Vector, Value, const RWavelength &>(),
                  D(Ray, Ray, 2),
-                 "o"_a, "d"_a, "time"_a=0.0, "wavelengths"_a=Wavelength())
-            .def(nb::init<Point, Vector, Float, Float, const Wavelength &>(),
+                 "o"_a, "d"_a, "time"_a=0.0, "wavelengths"_a=RWavelength())
+            .def(nb::init<Point, Vector, Value, Value, const RWavelength &>(),
                  D(Ray, Ray, 3),
                 "o"_a, "d"_a, "maxt"_a, "time"_a, "wavelengths"_a)
-            .def(nb::init<const Ray &, Float>(),
+            .def(nb::init<const Ray &, Value>(),
                 D(Ray, Ray, 4), "other"_a, "maxt"_a)
             .def("__call__", &Ray::operator(), D(Ray, operator, call), "t"_a)
             .def_field(Ray, o,           D(Ray, o))
@@ -34,8 +36,14 @@ void bind_ray(nb::module_ &m, const char *name) {
 MI_PY_EXPORT(Ray) {
     MI_PY_IMPORT_TYPES()
 
+    using Ray3d = Ray<Point2d, dr::replace_scalar_t<Spectrum, double>>;
+
     bind_ray<Ray<Point2f, Spectrum>>(m, "Ray2f");
     bind_ray<Ray3f>(m, "Ray3f");
+
+    MI_PY_CHECK_ALIAS(Ray3d, "Ray3d") {
+        bind_ray<Ray3d>(m, "Ray3d");
+    }
 
     {
         auto raydiff = nb::class_<RayDifferential3f, Ray3f>(m, "RayDifferential3f", D(RayDifferential))

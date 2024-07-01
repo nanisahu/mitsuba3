@@ -139,6 +139,10 @@ MI_PY_EXPORT(DrJit) {
     for (int dim = 2; dim < 5; ++dim)
         bind_type_aliases("Matrix" + std::to_string(dim));
 
+    // Array type aliases
+    for (int dim = 0; dim < 5; ++dim)
+        bind_type_aliases("Array" + std::to_string(dim));
+
     // Complex type aliases
     bind_type_aliases("Complex2");
 

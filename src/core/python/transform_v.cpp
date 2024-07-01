@@ -1,6 +1,7 @@
 #include <mitsuba/core/bbox.h>
 #include <mitsuba/core/transform.h>
 #include <mitsuba/core/frame.h>
+#include <mitsuba/core/ray.h>
 #include <mitsuba/core/properties.h>
 #include <mitsuba/python/python.h>
 #include <nanobind/stl/string.h>
