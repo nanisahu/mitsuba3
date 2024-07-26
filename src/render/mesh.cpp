@@ -31,7 +31,6 @@ MI_VARIANT Mesh<Float, Spectrum>::Mesh(const Properties &props) : Base(props) {
     m_flip_normals = props.get<bool>("flip_normals", false);
 
     m_discontinuity_types = (uint32_t) DiscontinuityFlags::PerimeterType;
-
     m_shape_type = ShapeType::Mesh;
 }
 
